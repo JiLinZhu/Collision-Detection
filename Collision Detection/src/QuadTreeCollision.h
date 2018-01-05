@@ -13,6 +13,7 @@ typedef struct QuadTreeT{
 	int maxObj; //10;
 	int maxLvl; //5;
 	int curLvl;
+	int curObj;
 	double lowBoundX;
 	double lowBoundY;
 	double upBoundX;

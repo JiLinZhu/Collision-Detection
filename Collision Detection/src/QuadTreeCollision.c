@@ -14,12 +14,12 @@
 #include "Vector.h"
 #include "QuadTreeCollision.h"
 
-QuadTree quadTreeCreate( int level, int lowBoundX, int lowBoundY, int upBoundX, int upBoundY ){
+QuadTree quadTreeCreate( int level, int size, double lowBoundX, double lowBoundY, double upBoundX, double upBoundY ){
 	Shape *objects = malloc( sizeof(Shape) * 10 ); assert(objects);
 	QuadTree *nodes = malloc( sizeof(QuadTree) * 4); assert(nodes);
 	for( int i = 0; i < 10; i++ ) objects[i] = NULL;
 	for( int i = 0; i < 4; i++ ) nodes[i] = NULL;
-	QuadTree q = {10, 5, level, lowBoundX, lowBoundY, upBoundX, upBoundY, objects, nodes};
+	QuadTree q = {10, 5, level, size, lowBoundX, lowBoundY, upBoundX, upBoundY, objects, nodes};
 	return q;
 }
 
@@ -43,8 +43,13 @@ double getMinMaxY ( Shape *s, int minMax ){
 	return fabs(minMaxY);
 }
 
-void quadTreeClear( QuadTree q ){
+void clear( QuadTree q ){
+	for( int i = 0; i < 4; i++ ) {
+		if ( q.nodes[i] != null ) clear(q.nodes[i]);
+		q.nodes[i] = NULL;
+	}
 
+	for( int i = 0; i < q.curObj; i++ ) q.objects[i] = NULL;
 }
 
 void split( QuadTree q ){
@@ -87,5 +92,23 @@ void insertObject( Shape *s, QuadTree q ){
 		}
 	}
 
+	q.nodes[q.curObj++] = s;
 
+	if( q.curObj > q.maxObj && q.curLvl < q.maxLvl ) {
+		if ( q.nodes[0] == NULL ) split( q );
+		for( int i = 0; i < q.maxObj; i++ ) {
+			int index = getQuad( q.objects[i], q );
+			if ( index == -1 ) {
+				insertObject( q.objects[i], q.nodes[index] );
+				q.objects[i] = NULL;
+			}
+		}
+	}
+}
+
+Shape *retreiveCollision( Shape *s, QuadTree q ){
+	int index = getQuad( s, q );
+	if ( index != -1 && q.nodes[0] != NULL ) return retreiveCollision( s, q.nodes[index] );
+
+	else return q.objects;
 }
