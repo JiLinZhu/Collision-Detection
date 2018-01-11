@@ -23,13 +23,39 @@ typedef struct QuadTreeT{
 }QuadTree;
 
 
-QuadTree quadTreeCreate( int level, int lowBoundX, int lowBoundY, int upBoundX, int upBoundY );
+/*
+ * QuadTreeCollision.c
+ *
+ *  Created on: Dec 30, 2017
+ *      Author: jilin
+ */
 
-void quadTreeClear( QuadTree q );
 
-void split( QuadTree q );
+#include <assert.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdbool.h>
+#include <math.h>
+#include "Vector.h"
+#include "QuadTreeCollision.h"
+
+QuadTree quadTreeCreate( int level, int size, double lowBoundX, double lowBoundY, double upBoundX, double upBoundY );
+
+double getMinMaxX ( Shape *s, int minMax );
+
+double getMinMaxY ( Shape *s, int minMax );
+
+void clear( QuadTree *q );
+
+void split( QuadTree *q );
 
 int getQuad( Shape *s, QuadTree q );
+
+void insertObject( Shape *s, QuadTree *q );
+
+void resetObjectsPosition( QuadTree *q );
+
+Shape *retreiveCollision( Shape *s, QuadTree q );
 
 #endif /* QUADTREECOLLISION_H_ */
 

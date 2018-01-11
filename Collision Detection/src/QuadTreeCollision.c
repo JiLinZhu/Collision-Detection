@@ -15,10 +15,12 @@
 #include "QuadTreeCollision.h"
 
 QuadTree quadTreeCreate( int level, int size, double lowBoundX, double lowBoundY, double upBoundX, double upBoundY ){
+	Shape s = { 0, NULL, NULL };
+	QuadTree a = { 0, 0, 0, 0, 0, 0, 0, 0, NULL, NULL };
 	Shape *objects = malloc( sizeof(Shape) * 10 ); assert(objects);
 	QuadTree *nodes = malloc( sizeof(QuadTree) * 4); assert(nodes);
-	for( int i = 0; i < 10; i++ ) objects[i] = NULL;
-	for( int i = 0; i < 4; i++ ) nodes[i] = NULL;
+	for( int i = 0; i < 10; i++ ) objects[i] = s;
+	for( int i = 0; i < 4; i++ ) nodes[i] = a;
 	QuadTree q = {10, 5, level, size, lowBoundX, lowBoundY, upBoundX, upBoundY, objects, nodes};
 	return q;
 }
@@ -43,23 +45,24 @@ double getMinMaxY ( Shape *s, int minMax ){
 	return fabs(minMaxY);
 }
 
-void clear( QuadTree q ){
+void clear( QuadTree *q ){
+	q->curObj = 0;
 	for( int i = 0; i < 4; i++ ) {
-		if ( q.nodes[i] != null ) clear(q.nodes[i]);
-		q.nodes[i] = NULL;
+		if ( q->nodes[i].maxLvl != 0 ) clear(&q->nodes[i]);
+		q->nodes[i].maxLvl = 0;
 	}
 
-	for( int i = 0; i < q.curObj; i++ ) q.objects[i] = NULL;
+	for( int i = 0; i < q->curObj; i++ ) q->objects[i].numPoints = 0;
 }
 
-void split( QuadTree q ){
-	double midX = q.lowBoundX + (q.upBoundX-q.lowBoundX)/2;
-	double midY = q.lowBoundY + (q.upBoundY-q.lowBoundY)/2;
+void split( QuadTree *q ){
+	double midX = q->lowBoundX + (q->upBoundX-q->lowBoundX)/2;
+	double midY = q->lowBoundY + (q->upBoundY-q->lowBoundY)/2;
 
-	q.nodes[0] = quadTreeCreate( q.curLvl + 1, q.lowBoundX, q.upBoundY, midX, midY );
-	q.nodes[1] = quadTreeCreate( q.curLvl + 1, midX, q.upBoundY, q.upBoundX, midY );
-	q.nodes[2] = quadTreeCreate( q.curLvl + 1, q.lowBoundX, midY, midX, q.lowBoundY );
-	q.nodes[3] = quadTreeCreate( q.curLvl + 1, midX, midY, q.upBoundX, q.lowBoundY );
+	q->nodes[0] = quadTreeCreate( q->curLvl + 1, 0, q->lowBoundX, q->upBoundY, midX, midY );
+	q->nodes[1] = quadTreeCreate( q->curLvl + 1, 0, midX, q->upBoundY, q->upBoundX, midY );
+	q->nodes[2] = quadTreeCreate( q->curLvl + 1, 0, q->lowBoundX, midY, midX, q->lowBoundY );
+	q->nodes[3] = quadTreeCreate( q->curLvl + 1, 0, midX, midY, q->upBoundX, q->lowBoundY );
 }
 
 int getQuad( Shape *s, QuadTree q ){
@@ -82,33 +85,42 @@ int getQuad( Shape *s, QuadTree q ){
 	} else return -1;
 }
 
-void insertObject( Shape *s, QuadTree q ){
-	if( q.nodes[0] != NULL ){
-		int index = getQuad( s, q );
+void insertObject( Shape *s, QuadTree *q ){
+	if( q->nodes[0].maxLvl != 0 ){
+		int index = getQuad( s, *q );
 
 		if ( index != -1 ) {
-			insertObject( s, q.nodes[index] );
+			insertObject( s, &q->nodes[index] );
 			return;
 		}
 	}
 
-	q.nodes[q.curObj++] = s;
+	q->objects[q->curObj++] = *s;
 
-	if( q.curObj > q.maxObj && q.curLvl < q.maxLvl ) {
-		if ( q.nodes[0] == NULL ) split( q );
-		for( int i = 0; i < q.maxObj; i++ ) {
-			int index = getQuad( q.objects[i], q );
-			if ( index == -1 ) {
-				insertObject( q.objects[i], q.nodes[index] );
-				q.objects[i] = NULL;
+	if( q->curObj > q->maxObj && q->curLvl < q->maxLvl ) {
+		if ( q->nodes[0].maxLvl == 0 ) split( q );
+		for( int i = 0; i < q->maxObj; i++ ) {
+			int index = getQuad( &q->objects[i], *q );
+			if ( index != -1 ) {
+				insertObject( &q->objects[i], &q->nodes[index] );
+				q->curObj--;
+				q->objects[i].numPoints = 0;
 			}
 		}
+		resetObjectsPosition( q );
 	}
+}
+
+void resetObjectsPosition( QuadTree *q ){
+	int counter = 0;
+	for ( int i = 0; i < q->maxObj; i++ ) if( q->objects[i].numPoints != 0 ) q->objects[counter++] = q->objects[i];
+	for ( int i = counter; i < q->maxLvl; i++ ) q->objects[i].numPoints = 0;
 }
 
 Shape *retreiveCollision( Shape *s, QuadTree q ){
 	int index = getQuad( s, q );
-	if ( index != -1 && q.nodes[0] != NULL ) return retreiveCollision( s, q.nodes[index] );
-
+	if ( index != -1 && q.nodes[0].maxLvl != 0 ) return retreiveCollision( s, q.nodes[index] );
 	else return q.objects;
 }
+
+//When checking for collision, ensure that q->objects[i].numPoints != 0;
